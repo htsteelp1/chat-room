@@ -40,7 +40,7 @@ app.use(cors({
 }));
 
 
-app.use(express.static("public"));
+app.use(express.static("../client/dist/"));
 io.on("connect", (socket) =>
 {
 
