@@ -5,3 +5,4 @@ services:
       - "3000:3000"
     volumes:
       - ./data:/usr/src/app/data
+    restart: unless-stopped
