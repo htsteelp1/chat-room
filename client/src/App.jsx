@@ -62,7 +62,7 @@ function App() {
     }, []);
   return (<div className="bg-background text-foreground min-h-screen m-5">
           <div className="w-full max-w-md mb-3">
-              <form id="loginForm" onSubmit={loginHandle}>
+              <form id="loginForm" onSubmit={loginHandle} autoComplete={"off"}>
                   <FieldGroup>
                       <FieldSet>
                           <FieldLegend>Login</FieldLegend>
@@ -84,7 +84,7 @@ function App() {
                   </FieldGroup>
               </form>
           </div>
-          <form action={messageHandle} className={"w-full max-w-md"}>
+          <form action={messageHandle} className={"w-full max-w-md"} autoComplete={"off"}>
               <FieldGroup>
                   <Field>
                       <FieldLabel htmlFor={"message"}>Message</FieldLabel>
