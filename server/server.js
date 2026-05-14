@@ -10,10 +10,11 @@ import cookie from "cookie";
 const db = new DatabaseSync("./data/users.db");
 const app = express();
 const port = 3000;
+const isProd = process.env.NODE_ENV === "production";
 const server = createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:5173", "http://localhost:4173"],
+        origin: ["http://localhost:5173", "http://localhost:4173", "http://localhost:3000"],
         methods: ['GET', 'POST'],
         credentials: true
     }
@@ -51,7 +52,7 @@ app.use((req, res, next)=>{
     if(!req.cookies.security) res.cookie("security", "test");
     next();
 })
-app.use(express.static("./client/dist/"));
+app.use(express.static(isProd ? "./client/dist/" : "../client/dist"));
 app.post("/login", (req,res) => {
     switch (req.body.action) {
         case "login":
