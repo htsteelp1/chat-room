@@ -7,7 +7,7 @@ const __dirname = import.meta.dirname;
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import cookie from "cookie";
-const db = new DatabaseSync("./users.db");
+const db = new DatabaseSync("./data/users.db");
 const app = express();
 const port = 3000;
 const server = createServer(app);
@@ -34,6 +34,11 @@ function userExists(user) {
     return row !== undefined;
 }
 
+if (!userExists("guest")) {
+    newUser.run("guest", "test", "test");
+}
+
+
 app.use(cors({
     origin: ["http://localhost:5173", "http://localhost:4173"],
     methods: ['GET', 'POST'],
@@ -42,7 +47,7 @@ app.use(cors({
 app.use(express.json());                         // for Content-Type: application/json
 app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static("../client/dist/"));
+app.use(express.static("./client/dist/"));
 app.use(cookieParser());
 app.post("/login", (req,res) => {
     switch (req.body.action) {
