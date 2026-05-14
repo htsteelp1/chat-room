@@ -29,6 +29,27 @@ function Message({text}) {
     </div>
 }
 
+async function loginHandle(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target)
+    fd.append("action", e.nativeEvent.submitter.value);
+    const params = new URLSearchParams(fd);
+    try {
+        const response = await fetch("/login", {
+            method: "POST",
+            body: params
+        });
+        if (response.ok) {
+            console.log("responsed");
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+    location.reload();
+}
+
+
 
 function App() {
     const [messages, setMessages] = useState([]);
@@ -41,7 +62,7 @@ function App() {
     }, []);
   return (<div className="bg-background text-foreground min-h-screen m-5">
           <div className="w-full max-w-md mb-3">
-              <form id="loginForm" action={"/login"} method={"POST"} target={"_blank"}>
+              <form id="loginForm" onSubmit={loginHandle}>
                   <FieldGroup>
                       <FieldSet>
                           <FieldLegend>Login</FieldLegend>
