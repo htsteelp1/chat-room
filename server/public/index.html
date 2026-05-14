@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form id="loginForm">
+    <input id="user" type="text" placeholder="user">
+    <input id="password" type="password" placeholder="password">
+    <button id="register" name="action" value="register">Register</button>
+    <button id="login" name="action" value="login">login</button>
+</form>
+<form id="message">
+    <input name="name" id="name" type="text" placeholder="name">
+    <input name="message" type="text" id="input">
+    <input type="submit" id="submit">
+</form>
+
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const input = document.querySelector("#input");
+    const form = document.querySelector("#message");
+    const name = document.querySelector("#name")
+    const socket = io();
+    let cookie = "test";
+    const info = {"cookie":cookie, "message":""}
+
+    let loginForm = document.querySelector("#loginForm");
+    let username = document.getElementById("user");
+    let password = document.getElementById("password");
+    loginForm.addEventListener("submit", (e)=> {
+        e.preventDefault();
+        socket.emit("login", {"action":e.submitter.id, "user":username.value, "password":password.value})
+    })
+    form.addEventListener("submit", (e)=>
+        {
+            e.preventDefault();
+            info.message = input.value;
+            socket.emit("message", info);
+        }
+    )
+    socket.on("send message", message => {
+        const p = document.createElement("p");
+        p.innerText = message;
+        document.body.appendChild(p);
+    })
+    socket.on("cookie", cookieS => {info.cookie = cookieS;
+    console.log(info.cookie)})
+
+</script>
+</body>
+</html>
