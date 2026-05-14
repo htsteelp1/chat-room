@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input"
 import './App.css'
 import socket from "./socket";
 import {useEffect, useState} from "react";
+
 import { Button } from "@/components/ui/button"
 import {
     Field,
@@ -16,26 +17,12 @@ import {
     FieldTitle,
 } from "@/components/ui/field"
 
-let cookie = "test";
 
-function loginHandle(formData) {
-    let user = formData.get("user");
-    let password = formData.get("password");
-    const info = {user:user, password:password, action:"login"}
-    socket.emit("login", info);
-}
 
 function messageHandle(formData) {
-    socket.emit("message", {cookie:cookie, message:formData.get("message")})
+    socket.emit("message", {message:formData.get("message")})
 }
 
-function registerHandle(formData) {
-    let user = formData.get("user");
-    let password = formData.get("password");
-    const info = {user:user, password:password, action:"register"}
-    socket.emit("login", info);
-    console.log("register")
-}
 function Message({text}) {
     return <div className={"messages"}>
         {text}
@@ -46,16 +33,15 @@ function Message({text}) {
 function App() {
     const [messages, setMessages] = useState([]);
     useEffect(() => {
-        socket.on("cookie", (res) => {cookie = res;
-        console.log(cookie)})
         console.log("test");
         socket.on("send message", (res) => {
             setMessages(prev => [...prev, res])
+            console.log("message")
         } )
     }, []);
   return (<div className="bg-background text-foreground min-h-screen m-5">
           <div className="w-full max-w-md mb-3">
-              <form id="loginForm" action={loginHandle}>
+              <form id="loginForm" action={"/login"} method={"POST"} target={"_blank"}>
                   <FieldGroup>
                       <FieldSet>
                           <FieldLegend>Login</FieldLegend>
@@ -71,8 +57,8 @@ function App() {
                           </FieldGroup>
                       </FieldSet>
                       <Field orientation="horizontal">
-                          <Button type="submit" id="login" formAction={loginHandle}>Login</Button>
-                          <Button type="submit" id="register" formAction={registerHandle} variant="outline">Register</Button>
+                          <Button type="submit" id="login" name={"action"} value={"login"}>Login</Button>
+                          <Button type="submit" id="register" name={"action"} value={"register"} variant="outline">Register</Button>
                       </Field>
                   </FieldGroup>
               </form>

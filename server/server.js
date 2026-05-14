@@ -5,7 +5,8 @@ import {randomBytes} from "node:crypto";
 import {createServer} from "http";
 const __dirname = import.meta.dirname;
 import cors from "cors";
-
+import cookieParser from "cookie-parser";
+import cookie from "cookie";
 const db = new DatabaseSync("./users.db");
 const app = express();
 const port = 3000;
@@ -38,36 +39,67 @@ app.use(cors({
     methods: ['GET', 'POST'],
     credentials: true,
 }));
-
+app.use(express.json());                         // for Content-Type: application/json
+app.use(express.urlencoded({ extended: true }));
 
 app.use(express.static("../client/dist/"));
+app.use(cookieParser());
+app.post("/login", (req,res) => {
+    switch (req.body.action) {
+        case "login":
+            if (!userExists(req.body.user)) break;
+            if (queryUser.get(req.body.user).password === req.body.password) {
+                res.cookie("security", queryUser.get(req.body.user).cookie, {httpOnly: true, maxAge: 86400000});
+                console.log("user logged in");
+            }
+            break;
+        case "register":
+            if (userExists(req.body.user)) break;
+            const cookieGen = randomBytes(10).toString('hex');
+            newUser.run(req.body.user, req.body.password, cookieGen);
+            res.cookie("security", cookieGen, {httpOnly: true, maxAge: 86400000});
+            console.log("user registered")
+            break;
+        default:
+            res.cookie("security", "test");
+            break;
+
+
+    }
+    return res.json({ success: true });
+
+});
+
+
+io.use((socket, next) => {
+    const header = socket.handshake.headers.cookie;
+    if (!header) return next(new Error("Authentication error: No cookies found"));
+
+    socket.cookies = cookie.parse(header);
+    next();
+});
+
+
 io.on("connect", (socket) =>
 {
 
     console.log("connected the webSocket");
     socket.on("message", info => {
-        let theMessage = queryCookie.get(info.cookie).user + ": " + info.message;
+        console.log("message")
+        let theMessage = queryCookie.get(socket.cookies.security).user + ": " + info.message;
         io.emit('send message', theMessage);
     })
-    socket.on("login", req => {
-        switch (req.action) {
-            case "login":
-                if (!userExists(req.user)) break;
-                if (queryUser.get(req.user).password === req.password) {
-                    socket.emit("cookie", queryUser.get(req.user).cookie);
-                    console.log("user logged in");
-                }
-                break;
-            case "register":
-                if (userExists(req.user)) break;
-                const cookieGen = randomBytes(10).toString('hex');
-                newUser.run(req.user, req.password, cookieGen);
-                socket.emit("cookie", cookieGen);
-                console.log("user registered")
-                break;
-                socket.emit("cookie", "guest");
-        }
-    });
+
+})
+
+
+
+app.get("/", (req, res) => {
+    if (!req.cookies.security) {
+        res.cookie("security", "test", {httpOnly: true});
+    }
+    res.send();
+
 })
 
 server.listen(port, ()=> {console.log(`server at http://localhost:${port}`)});
