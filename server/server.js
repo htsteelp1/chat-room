@@ -70,7 +70,7 @@ app.post("/login", (req,res) => {
 
 
     }
-    if (!havecookie) res.cookie("security", "test");
+    if (!haveCookie) res.cookie("security", "test");
     return res.json({ success: true });
 
 });
