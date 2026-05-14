@@ -46,21 +46,23 @@ app.use(cors({
 }));
 app.use(express.json());                         // for Content-Type: application/json
 app.use(express.urlencoded({ extended: true }));
-
-app.use(express.static("./client/dist/"));
 app.use(cookieParser());
+app.use((req, res, next)=>{
+    if(!req.cookies.security) res.cookie("security", "test");
+    next();
+})
+app.use(express.static("./client/dist/"));
 app.post("/login", (req,res) => {
-    let haveCookie = true;
     switch (req.body.action) {
         case "login":
-            if (!userExists(req.body.user)) haveCookie = false;
+            if (!userExists(req.body.user)) break;
             if (queryUser.get(req.body.user).password === req.body.password) {
                 res.cookie("security", queryUser.get(req.body.user).cookie, {httpOnly: true, maxAge: 86400000});
                 console.log("user logged in");
             }
             break;
         case "register":
-            if (userExists(req.body.user)) haveCookie = false;
+            if (userExists(req.body.user)) break;
             const cookieGen = randomBytes(10).toString('hex');
             newUser.run(req.body.user, req.body.password, cookieGen);
             res.cookie("security", cookieGen, {httpOnly: true, maxAge: 86400000});
@@ -70,7 +72,6 @@ app.post("/login", (req,res) => {
 
 
     }
-    if (!haveCookie) res.cookie("security", "test");
     return res.json({ success: true });
 
 });
