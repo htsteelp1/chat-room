@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input"
 import './App.css'
 import socket from "./socket";
 import {useEffect, useState} from "react";
-
+import ReverseInfiniteScroller from "./components/ReverseInfiniteScroller.jsx"
 import { Button } from "@/components/ui/button"
 import {
     Field,
@@ -17,10 +17,15 @@ import {
     FieldTitle,
 } from "@/components/ui/field"
 
+function loadMore() {
+    console.log("loadMore");
+}
 
-
-function messageHandle(formData) {
-    socket.emit("message", {message:formData.get("message")})
+function messageHandle(formData, chatID) {
+    debugger;
+    console.log(formData)
+    const info = {}
+    socket.emit("message", {chatID, message:formData} );
 }
 
 function Message({text}) {
@@ -50,20 +55,30 @@ async function loginHandle(e) {
 }
 
 
-
 function App() {
     const [messages, setMessages] = useState([]);
+    const [user, setUser] = useState([]);
     useEffect(() => {
+        socket.on("user", (res) => {setUser(res)})
+        socket.emit("getHistory", 1)
         console.log("test");
         socket.on("send message", (res) => {
             setMessages(prev => [...prev, res])
             console.log("message")
         } )
+        socket.on("history", (res) => {
+            const format = res.map(msg => {
+                msg["timestamp"] = new Date(msg.timestamp);
+                return msg;
+            })
+            setMessages(format);
+        })
     }, []);
   return (<div className="bg-background text-foreground min-h-screen m-5">
           <div className="w-full max-w-md mb-3">
               <form id="loginForm" onSubmit={loginHandle} autoComplete={"off"}>
                   <FieldGroup>
+                      <FieldDescription>Logged in as <span>{user}</span></FieldDescription>
                       <FieldSet>
                           <FieldLegend>Login</FieldLegend>
                           <FieldGroup>
@@ -84,21 +99,7 @@ function App() {
                   </FieldGroup>
               </form>
           </div>
-          <form action={messageHandle} className={"w-full max-w-md"} autoComplete={"off"}>
-              <FieldGroup>
-                  <Field>
-                      <FieldLabel htmlFor={"message"}>Message</FieldLabel>
-                      <Input id={"message"} placeholder={"Message"} type={"text"} name={"message"}/>
-                  </Field>
-                  <Field orientation={"vertical"}><Button type={"submit"}>Send</Button></Field>
-              </FieldGroup>
-          </form>
-          <div>
-              {messages.map((msg, i) =>
-                  <Message text={msg} key={i}></Message>
-              )}
-          </div>
-        <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
+          <ReverseInfiniteScroller messages={messages} currentUser={"Test"} channelName={"general"} isConnected={true} onSendMessage={messageHandle} onLoadMore={loadMore}></ReverseInfiniteScroller>
   </div>
   );
 }
