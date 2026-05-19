@@ -120,8 +120,10 @@ export default function ChatUI({
                                  messages = [],
                                  isConnected = true,
                                  onSendMessage,
-                                 onLoadMore
+                                 onLoadMore,
+    chatID
                                }) {
+    console.log(chatID)
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
@@ -165,7 +167,7 @@ export default function ChatUI({
   const handleSend = () => {
     const text = input.trim();
     if (!text || !isConnected) return;
-    onSendMessage(text, 1);
+    onSendMessage(text, chatID);
     setInput("");
     requestAnimationFrame(() => scrollToBottom(true));
   };

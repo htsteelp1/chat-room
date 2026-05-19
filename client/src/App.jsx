@@ -4,6 +4,7 @@ import socket from "./socket";
 import {useEffect, useState} from "react";
 import ReverseInfiniteScroller from "./components/ReverseInfiniteScroller.jsx"
 import { Button } from "@/components/ui/button"
+import {BrowserRouter, Routes, Route, useParams} from "react-router-dom";
 import {
     Field,
     FieldContent,
@@ -17,6 +18,17 @@ import {
     FieldTitle,
 } from "@/components/ui/field"
 
+let chatID = 1;
+
+function LoadScroller({messages, onSendMessages,onLoadMore}) {
+    const params = useParams();
+    console.log(params);
+    useEffect(() => {
+        chatID = params.theChatID || 1;
+        socket.emit("getHistory", chatID);
+    }, [params.theChatID]);
+    return <ReverseInfiniteScroller messages={messages} currentUser={"Test"} channelName={"general"} chatID={params.theChatID} isConnected={true} onSendMessage={messageHandle} onLoadMore={loadMore}></ReverseInfiniteScroller>
+}
 function loadMore() {
     console.log("loadMore");
 }
@@ -32,6 +44,10 @@ function Message({text}) {
     return <div className={"messages"}>
         {text}
     </div>
+}
+function addUserHandle(formData) {
+    console.log(formData.get("user"))
+    socket.emit("addUser", {user:formData.get("user"), chatID})
 }
 
 async function loginHandle(e) {
@@ -56,11 +72,11 @@ async function loginHandle(e) {
 
 
 function App() {
+    let params = useParams();
     const [messages, setMessages] = useState([]);
     const [user, setUser] = useState([]);
     useEffect(() => {
         socket.on("user", (res) => {setUser(res)})
-        socket.emit("getHistory", 1)
         console.log("test");
         socket.on("send message", (res) => {
             setMessages(prev => [...prev, res])
@@ -99,7 +115,23 @@ function App() {
                   </FieldGroup>
               </form>
           </div>
-          <ReverseInfiniteScroller messages={messages} currentUser={"Test"} channelName={"general"} isConnected={true} onSendMessage={messageHandle} onLoadMore={loadMore}></ReverseInfiniteScroller>
+
+          <form id={"addUser"} autoComplete={"off"} className={"mb-10"} action={addUserHandle}>
+              <FieldGroup>
+                  <FieldSet>
+                      <FieldLegend>Add User to Group</FieldLegend>
+                      <Input name={"user"} id={"user"} type={"text"}/>
+                      <Button name={"addUser"} id={"addUser"} type={"submit"}>Add User</Button>
+                  </FieldSet>
+              </FieldGroup>
+          </form>
+                 <BrowserRouter>
+                     <Routes>
+                         <Route path={"/"} element={<LoadScroller messages={messages} onSendMessages={messageHandle} onLoadMore={loadMore}/>}/>
+                         <Route path={"/chat/:theChatID"} element={<LoadScroller messages={messages} onSendMessages={messageHandle} onLoadMore={loadMore}/>}/>
+                     </Routes>
+                     </BrowserRouter>
+
   </div>
   );
 }

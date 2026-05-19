@@ -4,6 +4,7 @@ import {DatabaseSync} from "node:sqlite";
 import {randomBytes} from "node:crypto";
 import {createServer} from "http";
 const __dirname = import.meta.dirname;
+import { join } from 'path';
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import cookie from "cookie";
@@ -83,7 +84,7 @@ const checkMembership = db.prepare(`
     SELECT 1 FROM chat_users 
     WHERE userID = ? AND chatID = ?
 `);
-const queryUser = db.prepare("SELECT user, password, cookie FROM users WHERE user = ?")
+const queryUser = db.prepare("SELECT id, user, password, cookie FROM users WHERE user = ?")
 const userStatus = db.prepare('SELECT 1 FROM users WHERE user = ?');
 const newUser = db.prepare(`INSERT INTO users (user, password, cookie) VALUES (?,?,?)`);
 const userIntoChat = db.prepare(`INSERT INTO chat_users (userID, chatID) VALUES (?,?)`)
@@ -116,6 +117,7 @@ app.use((req, res, next)=>{
     next();
 })
 app.use(express.static(isProd ? "./client/dist/" : "../client/dist"));
+
 app.post("/login", (req,res) => {
     switch (req.body.action) {
         case "login":
@@ -151,11 +153,16 @@ io.use((socket, next) => {
 });
 
 
-io.on("connect", (socket) =>
+io.on("connect", (socket, req) =>
 {
+    const aChatID = parseInt(socket.handshake.query.chatID) || 1
     const user = queryCookie.get(socket.cookies.security);
     console.log("connected the webSocket");
     socket.emit("user", user.user);
+    if (checkMembership.get(user.id, aChatID)) {
+        socket.join(aChatID.toString())
+        console.log(aChatID)
+    }
     socket.on("message", info => {
         const chatID = info.chatID || 1;
         if (checkMembership.get(user.id, chatID)) {
@@ -167,7 +174,15 @@ io.on("connect", (socket) =>
             content: info.message,
             timestamp: result.createdAt,
         };
-        io.emit('send message', messageObject);}
+        io.to(chatID.toString()).emit('send message', messageObject);}
+    })
+    socket.on("addUser", (res, req) => {
+        if(checkMembership.get(user.id, chatID)) {
+            const userID = queryUser.get(req.user).id
+            if(!checkMembership.get(userID, req.chatID)) {
+                userIntoChat.run(userID, req.chatID)
+            }
+        }
     })
     socket.on("getHistory", (chatID) => {
         if (checkMembership.get(user.id, chatID)) {
@@ -179,11 +194,12 @@ io.on("connect", (socket) =>
 
 
 
-app.get("/", (req, res) => {
+app.get(/.*/, (req, res) => {
     if (!req.cookies.security) {
         res.cookie("security", "test", {httpOnly: true});
     }
-    res.send();
+    res.sendFile(join(__dirname, isProd ? "./client/dist/" : "../client/dist", "index.html"))
+
 
 })
 
