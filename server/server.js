@@ -90,7 +90,11 @@ const newUser = db.prepare(`INSERT INTO users (user, password, cookie) VALUES (?
 const userIntoChat = db.prepare(`INSERT INTO chat_users (userID, chatID) VALUES (?,?)`)
 const queryCookie = db.prepare("SELECT user, id FROM users WHERE cookie = ?")
 
-const newChat = db.prepare(`INSERT INTO chats (id, userID, name) VALUES (?, ?, ?)`)
+const chatList = db.prepare(`SELECT chats.id, chats.name 
+    FROM chats JOIN chat_users ON chats.id = chat_users.chatID
+    WHERE chat_users.userID = ?`);
+
+const newChat = db.prepare(`INSERT INTO chats (userID, name) VALUES (?, ?) RETURNING id, name`)
 function userExists(user) {
     const row = userStatus.get(user);
     return row !== undefined;
@@ -98,7 +102,7 @@ function userExists(user) {
 
 if (!userExists("guest")) {
     newUser.run("guest", "test", "test");
-    newChat.run(1,1,"global")
+    db.prepare(`INSERT INTO chats (id, userID, name) VALUES (?, ?, ?)`).run(1,1,"global")
     userIntoChat.run(1,1)
 }
 
@@ -116,7 +120,7 @@ app.use((req, res, next)=>{
     if(!queryCookie.get(req.cookies.security)) res.cookie("security", "test")
     next();
 })
-app.use(express.static(isProd ? "./client/dist/" : "../client/dist"));
+app.use("/assets", express.static(isProd ? "./client/dist/assets" : "../client/dist/assets"));
 
 app.post("/login", (req,res) => {
     switch (req.body.action) {
@@ -141,6 +145,15 @@ app.post("/login", (req,res) => {
     }
     return res.json({ success: true });
 
+});
+
+
+app.post("/create", (req, res) => {
+    const { name } = req.body;
+    const userID = queryCookie.get(req.cookies.security).id
+    const chatID = newChat.get(userID, name).id
+    userIntoChat.get(userID, chatID)
+    res.json({ chatID });
 });
 
 
@@ -176,8 +189,8 @@ io.on("connect", (socket, req) =>
         };
         io.to(chatID.toString()).emit('send message', messageObject);}
     })
-    socket.on("addUser", (res, req) => {
-        if(checkMembership.get(user.id, chatID)) {
+    socket.on("addUser", (req, res) => {
+        if(checkMembership.get(user.id, aChatID) && userExists(req.user)) {
             const userID = queryUser.get(req.user).id
             if(!checkMembership.get(userID, req.chatID)) {
                 userIntoChat.run(userID, req.chatID)
@@ -192,7 +205,12 @@ io.on("connect", (socket, req) =>
 
 })
 
-
+app.get("/serverList", async (req, res) => {
+    let userID = await queryCookie.get(req.cookies.security).id;
+    let serverList = await chatList.all(userID)
+    let formattedServerList = await serverList.map(val => {return {"route":"/chat/"+val.id.toString(), "name":val.name}})
+    res.json(formattedServerList);
+})
 
 app.get(/.*/, (req, res) => {
     if (!req.cookies.security) {

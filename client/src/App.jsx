@@ -5,6 +5,8 @@ import {useEffect, useState} from "react";
 import ReverseInfiniteScroller from "./components/ReverseInfiniteScroller.jsx"
 import { Button } from "@/components/ui/button"
 import {BrowserRouter, Routes, Route, useParams} from "react-router-dom";
+import CreateGroupChat from "./pages/CreateGroupChat.jsx";
+import Login from "./pages/LoginPage.jsx"
 import {
     Field,
     FieldContent,
@@ -73,9 +75,17 @@ async function loginHandle(e) {
 
 function App() {
     let params = useParams();
+    const [servers, setServers] = useState([]);
+    async function getServerList(){
+        let response = await fetch('/serverList');
+        let serverList = await response.json();
+        console.log(serverList);
+        setServers(serverList);
+    }
     const [messages, setMessages] = useState([]);
     const [user, setUser] = useState([]);
     useEffect(() => {
+        getServerList();
         socket.on("user", (res) => {setUser(res)})
         console.log("test");
         socket.on("send message", (res) => {
@@ -90,33 +100,9 @@ function App() {
             setMessages(format);
         })
     }, []);
-  return (<AppSidebar pages={[{route: "/chat/1", name: "global"}, {route: "/chat/2", name: "private"}]}>
+  return (<AppSidebar pages={servers}>
           <div className="bg-background text-foreground min-h-screen m-5">
-              <div className="w-full max-w-md mb-3">
-                  <form id="loginForm" onSubmit={loginHandle} autoComplete={"off"}>
-                      <FieldGroup>
-                          <FieldDescription>Logged in as <span>{user}</span></FieldDescription>
-                          <FieldSet>
-                              <FieldLegend>Login</FieldLegend>
-                              <FieldGroup>
-                                  <Field>
-                                      <FieldLabel htmlFor="user">Username</FieldLabel>
-                                      <Input id="user" name="user" placeholder="user"/>
-                                  </Field>
-                                  <Field>
-                                      <FieldLabel htmlFor="password">Password</FieldLabel>
-                                      <Input id="password" name="password" placeholder="password" type="password"/>
-                                  </Field>
-                              </FieldGroup>
-                          </FieldSet>
-                          <Field orientation="horizontal">
-                              <Button type="submit" id="login" name={"action"} value={"login"}>Login</Button>
-                              <Button type="submit" id="register" name={"action"} value={"register"}
-                                      variant="outline">Register</Button>
-                          </Field>
-                      </FieldGroup>
-                  </form>
-              </div>
+
 
               <form id={"addUser"} autoComplete={"off"} className={"mb-10"} action={addUserHandle}>
                   <FieldGroup>
@@ -134,6 +120,8 @@ function App() {
                       <Route path={"/chat/:theChatID"}
                              element={<LoadScroller messages={messages} onSendMessages={messageHandle}
                                                     onLoadMore={loadMore}/>}/>
+                      <Route path={"/create"} element={<CreateGroupChat/>}/>
+                      <Route path={"/login"} element={<Login/>}/>
                   </Routes>
               </BrowserRouter>
 

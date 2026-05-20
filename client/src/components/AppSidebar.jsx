@@ -13,6 +13,7 @@ import {
     SidebarMenuItem,
     SidebarProvider,
     SidebarRail,
+    SidebarSeparator,
     SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
@@ -22,11 +23,16 @@ import {
 } from "@/components/ui/collapsible";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
-import { ChevronRight, MessageSquare } from "lucide-react";
+import { ChevronRight, LogIn, MessageSquare, Plus } from "lucide-react";
 
 const DEMO_PAGES = [
     { route: "/chat/1", name: "Design System Q&A" },
     { route: "/chat/2", name: "React Patterns Deep Dive" },
+];
+
+const NAV_ITEMS = [
+    { route: "/create", name: "Create group chat", icon: Plus },
+    { route: "/login", name: "Login / Register", icon: LogIn },
 ];
 
 function AppSidebarInner({ pages }) {
@@ -58,6 +64,7 @@ function AppSidebarInner({ pages }) {
             </SidebarHeader>
 
             <SidebarContent>
+                {/* ── Chats section ── */}
                 <Collapsible open={open} onOpenChange={setOpen} className="group/collapsible">
                     <SidebarGroup>
                         <SidebarGroupLabel asChild>
@@ -94,6 +101,31 @@ function AppSidebarInner({ pages }) {
                         </CollapsibleContent>
                     </SidebarGroup>
                 </Collapsible>
+
+                <SidebarSeparator />
+
+                {/* ── Actions section ── */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>Actions</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {NAV_ITEMS.map(({ route, name, icon: Icon }) => (
+                                <SidebarMenuItem key={route}>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={activeRoute === route}
+                                        tooltip={name}
+                                    >
+                                        <a href={route}>
+                                            <Icon />
+                                            <span>{name}</span>
+                                        </a>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            ))}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
             </SidebarContent>
 
             <SidebarFooter>
@@ -114,22 +146,6 @@ function AppSidebarInner({ pages }) {
     );
 }
 
-/**
- * AppSidebar — layout shell with collapsible sidebar.
- *
- * Wrap your entire app content as children so the sidebar provider
- * can shift the layout correctly with no leftover empty space.
- *
- * Usage in App.jsx:
- *   <AppSidebar pages={[{ route: "/chat/1", name: "global" }]}>
- *     <SidebarTrigger /> ← optional extra trigger inside your content
- *     <div>...rest of your app...</div>
- *   </AppSidebar>
- *
- * A toggle button is already rendered at the top-left of SidebarInset.
- * Import and place <SidebarTrigger /> anywhere inside AppSidebar children
- * for additional triggers.
- */
 export { SidebarTrigger };
 
 export default function AppSidebar({ pages = DEMO_PAGES, children }) {
@@ -137,9 +153,6 @@ export default function AppSidebar({ pages = DEMO_PAGES, children }) {
         <TooltipProvider>
             <SidebarProvider>
                 <AppSidebarInner pages={pages} />
-
-                {/* SidebarInset shifts its content when the sidebar opens/closes
-            and collapses to zero width when the sidebar is hidden */}
                 <SidebarInset>
                     <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
                         <SidebarTrigger />
