@@ -83,7 +83,7 @@ function App() {
         setServers(serverList);
     }
     const [messages, setMessages] = useState([]);
-    const [user, setUser] = useState([]);
+    const [user, setUser] = useState("guest");
     useEffect(() => {
         getServerList();
         socket.on("user", (res) => {setUser(res)})
@@ -100,7 +100,7 @@ function App() {
             setMessages(format);
         })
     }, []);
-  return (<AppSidebar pages={servers}>
+  return (<AppSidebar pages={servers} username={user}>
           <div className="bg-background text-foreground min-h-screen m-5">
 
 

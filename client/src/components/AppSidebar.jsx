@@ -35,7 +35,7 @@ const NAV_ITEMS = [
     { route: "/login", name: "Login / Register", icon: LogIn },
 ];
 
-function AppSidebarInner({ pages }) {
+function AppSidebarInner({ pages, username }) {
     const [search, setSearch] = useState("");
     const [open, setOpen] = useState(true);
 
@@ -133,9 +133,9 @@ function AppSidebarInner({ pages }) {
                     <SidebarMenuItem>
                         <SidebarMenuButton tooltip="Your account">
                             <div className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold shrink-0">
-                                YO
+                                {username[0].toLocaleUpperCase()}
                             </div>
-                            <span className="font-medium">Your Name</span>
+                            <span className="font-medium">{username}</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
@@ -148,11 +148,11 @@ function AppSidebarInner({ pages }) {
 
 export { SidebarTrigger };
 
-export default function AppSidebar({ pages = DEMO_PAGES, children }) {
+export default function AppSidebar({ pages = DEMO_PAGES, children, username }) {
     return (
         <TooltipProvider>
             <SidebarProvider>
-                <AppSidebarInner pages={pages} />
+                <AppSidebarInner pages={pages} username={username}/>
                 <SidebarInset>
                     <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
                         <SidebarTrigger />
