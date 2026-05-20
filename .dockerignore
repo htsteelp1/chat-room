@@ -3,3 +3,5 @@
 /server/package-lock.json
 /client/package-lock.json
 /server/users.db
+/client/node_modules/
+/server/data
