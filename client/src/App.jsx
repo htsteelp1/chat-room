@@ -17,7 +17,7 @@ import {
     FieldSet,
     FieldTitle,
 } from "@/components/ui/field"
-
+import AppSidebar from "./components/AppSidebar.jsx"
 let chatID = 1;
 
 function LoadScroller({messages, onSendMessages,onLoadMore}) {
@@ -90,49 +90,55 @@ function App() {
             setMessages(format);
         })
     }, []);
-  return (<div className="bg-background text-foreground min-h-screen m-5">
-          <div className="w-full max-w-md mb-3">
-              <form id="loginForm" onSubmit={loginHandle} autoComplete={"off"}>
+  return (<AppSidebar pages={[{route: "/chat/1", name: "global"}, {route: "/chat/2", name: "private"}]}>
+          <div className="bg-background text-foreground min-h-screen m-5">
+              <div className="w-full max-w-md mb-3">
+                  <form id="loginForm" onSubmit={loginHandle} autoComplete={"off"}>
+                      <FieldGroup>
+                          <FieldDescription>Logged in as <span>{user}</span></FieldDescription>
+                          <FieldSet>
+                              <FieldLegend>Login</FieldLegend>
+                              <FieldGroup>
+                                  <Field>
+                                      <FieldLabel htmlFor="user">Username</FieldLabel>
+                                      <Input id="user" name="user" placeholder="user"/>
+                                  </Field>
+                                  <Field>
+                                      <FieldLabel htmlFor="password">Password</FieldLabel>
+                                      <Input id="password" name="password" placeholder="password" type="password"/>
+                                  </Field>
+                              </FieldGroup>
+                          </FieldSet>
+                          <Field orientation="horizontal">
+                              <Button type="submit" id="login" name={"action"} value={"login"}>Login</Button>
+                              <Button type="submit" id="register" name={"action"} value={"register"}
+                                      variant="outline">Register</Button>
+                          </Field>
+                      </FieldGroup>
+                  </form>
+              </div>
+
+              <form id={"addUser"} autoComplete={"off"} className={"mb-10"} action={addUserHandle}>
                   <FieldGroup>
-                      <FieldDescription>Logged in as <span>{user}</span></FieldDescription>
                       <FieldSet>
-                          <FieldLegend>Login</FieldLegend>
-                          <FieldGroup>
-                              <Field>
-                                  <FieldLabel htmlFor="user">Username</FieldLabel>
-                                  <Input id="user" name="user" placeholder="user" />
-                              </Field>
-                              <Field>
-                                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                                  <Input id="password" name="password" placeholder="password" type="password" />
-                              </Field>
-                          </FieldGroup>
+                          <FieldLegend>Add User to Group</FieldLegend>
+                          <Input name={"user"} id={"user"} type={"text"}/>
+                          <Button name={"addUser"} id={"addUser"} type={"submit"}>Add User</Button>
                       </FieldSet>
-                      <Field orientation="horizontal">
-                          <Button type="submit" id="login" name={"action"} value={"login"}>Login</Button>
-                          <Button type="submit" id="register" name={"action"} value={"register"} variant="outline">Register</Button>
-                      </Field>
                   </FieldGroup>
               </form>
+              <BrowserRouter>
+                  <Routes>
+                      <Route path={"/"} element={<LoadScroller messages={messages} onSendMessages={messageHandle}
+                                                               onLoadMore={loadMore}/>}/>
+                      <Route path={"/chat/:theChatID"}
+                             element={<LoadScroller messages={messages} onSendMessages={messageHandle}
+                                                    onLoadMore={loadMore}/>}/>
+                  </Routes>
+              </BrowserRouter>
+
           </div>
-
-          <form id={"addUser"} autoComplete={"off"} className={"mb-10"} action={addUserHandle}>
-              <FieldGroup>
-                  <FieldSet>
-                      <FieldLegend>Add User to Group</FieldLegend>
-                      <Input name={"user"} id={"user"} type={"text"}/>
-                      <Button name={"addUser"} id={"addUser"} type={"submit"}>Add User</Button>
-                  </FieldSet>
-              </FieldGroup>
-          </form>
-                 <BrowserRouter>
-                     <Routes>
-                         <Route path={"/"} element={<LoadScroller messages={messages} onSendMessages={messageHandle} onLoadMore={loadMore}/>}/>
-                         <Route path={"/chat/:theChatID"} element={<LoadScroller messages={messages} onSendMessages={messageHandle} onLoadMore={loadMore}/>}/>
-                     </Routes>
-                     </BrowserRouter>
-
-  </div>
+      </AppSidebar>
   );
 }
 

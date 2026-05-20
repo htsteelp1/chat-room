@@ -67,7 +67,7 @@ const getMessagesByChat = db.prepare(`
         messages.id, 
         users.user AS author, 
         messages.body AS content, 
-        messages.createdAt AS timestamp
+        datetime(messages.createdAt, 'localtime') AS timestamp
     FROM messages
     JOIN users ON messages.userID = users.id
     WHERE messages.chatID = ?
