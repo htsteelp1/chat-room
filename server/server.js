@@ -168,6 +168,11 @@ io.use((socket, next) => {
 
 io.on("connect", (socket, req) =>
 {
+    const securityCookie = socket.cookies?.security;
+    if (!securityCookie) {
+        socket.disconnect(true); // or handle as unauthenticated
+        return;
+    }
     const aChatID = parseInt(socket.handshake.query.chatID) || 1
     const user = queryCookie.get(socket.cookies.security);
     console.log("connected the webSocket");
