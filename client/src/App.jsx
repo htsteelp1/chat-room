@@ -4,6 +4,9 @@ import socket from "./socket";
 import {useEffect, useState} from "react";
 import ReverseInfiniteScroller from "./components/ReverseInfiniteScroller.jsx"
 import { Button } from "@/components/ui/button"
+import {BrowserRouter, Routes, Route, useParams} from "react-router-dom";
+import CreateGroupChat from "./pages/CreateGroupChat.jsx";
+import Login from "./pages/LoginPage.jsx"
 import {
     Field,
     FieldContent,
@@ -16,7 +19,18 @@ import {
     FieldSet,
     FieldTitle,
 } from "@/components/ui/field"
+import AppSidebar from "./components/AppSidebar.jsx"
+let chatID = 1;
 
+function LoadScroller({messages, onSendMessages,onLoadMore}) {
+    const params = useParams();
+    console.log(params);
+    useEffect(() => {
+        chatID = params.theChatID || 1;
+        socket.emit("getHistory", chatID);
+    }, [params.theChatID]);
+    return <ReverseInfiniteScroller messages={messages} currentUser={"Test"} channelName={"general"} chatID={params.theChatID} isConnected={true} onSendMessage={messageHandle} onLoadMore={loadMore}></ReverseInfiniteScroller>
+}
 function loadMore() {
     console.log("loadMore");
 }
@@ -32,6 +46,10 @@ function Message({text}) {
     return <div className={"messages"}>
         {text}
     </div>
+}
+function addUserHandle(formData) {
+    console.log(formData.get("user"))
+    socket.emit("addUser", {user:formData.get("user"), chatID})
 }
 
 async function loginHandle(e) {
@@ -56,11 +74,19 @@ async function loginHandle(e) {
 
 
 function App() {
+    let params = useParams();
+    const [servers, setServers] = useState([]);
+    async function getServerList(){
+        let response = await fetch('/serverList');
+        let serverList = await response.json();
+        console.log(serverList);
+        setServers(serverList);
+    }
     const [messages, setMessages] = useState([]);
-    const [user, setUser] = useState([]);
+    const [user, setUser] = useState("guest");
     useEffect(() => {
+        getServerList();
         socket.on("user", (res) => {setUser(res)})
-        socket.emit("getHistory", 1)
         console.log("test");
         socket.on("send message", (res) => {
             setMessages(prev => [...prev, res])
@@ -74,33 +100,33 @@ function App() {
             setMessages(format);
         })
     }, []);
-  return (<div className="bg-background text-foreground min-h-screen m-5">
-          <div className="w-full max-w-md mb-3">
-              <form id="loginForm" onSubmit={loginHandle} autoComplete={"off"}>
+  return (<AppSidebar pages={servers} username={user}>
+          <div className="bg-background text-foreground min-h-screen m-5">
+
+
+              <form id={"addUser"} autoComplete={"off"} className={"mb-10"} action={addUserHandle}>
                   <FieldGroup>
-                      <FieldDescription>Logged in as <span>{user}</span></FieldDescription>
                       <FieldSet>
-                          <FieldLegend>Login</FieldLegend>
-                          <FieldGroup>
-                              <Field>
-                                  <FieldLabel htmlFor="user">Username</FieldLabel>
-                                  <Input id="user" name="user" placeholder="user" />
-                              </Field>
-                              <Field>
-                                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                                  <Input id="password" name="password" placeholder="password" type="password" />
-                              </Field>
-                          </FieldGroup>
+                          <FieldLegend>Add User to Group</FieldLegend>
+                          <Input name={"user"} id={"user"} type={"text"}/>
+                          <Button name={"addUser"} id={"addUser"} type={"submit"}>Add User</Button>
                       </FieldSet>
-                      <Field orientation="horizontal">
-                          <Button type="submit" id="login" name={"action"} value={"login"}>Login</Button>
-                          <Button type="submit" id="register" name={"action"} value={"register"} variant="outline">Register</Button>
-                      </Field>
                   </FieldGroup>
               </form>
+              <BrowserRouter>
+                  <Routes>
+                      <Route path={"/"} element={<LoadScroller messages={messages} onSendMessages={messageHandle}
+                                                               onLoadMore={loadMore}/>}/>
+                      <Route path={"/chat/:theChatID"}
+                             element={<LoadScroller messages={messages} onSendMessages={messageHandle}
+                                                    onLoadMore={loadMore}/>}/>
+                      <Route path={"/create"} element={<CreateGroupChat/>}/>
+                      <Route path={"/login"} element={<Login/>}/>
+                  </Routes>
+              </BrowserRouter>
+
           </div>
-          <ReverseInfiniteScroller messages={messages} currentUser={"Test"} channelName={"general"} isConnected={true} onSendMessage={messageHandle} onLoadMore={loadMore}></ReverseInfiniteScroller>
-  </div>
+      </AppSidebar>
   );
 }
 
