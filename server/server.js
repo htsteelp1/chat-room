@@ -8,12 +8,17 @@ import { join } from 'path';
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import cookie from "cookie";
+import passport from "passport";
+import {Strategy as LocalStrategy} from "passport-local";
+import session from "express-session"
 const db = new DatabaseSync("./data/users.db");
 db.exec("PRAGMA foreign_keys = ON;");
 const app = express();
 const port = 3000;
 const isProd = process.env.NODE_ENV === "production";
 const server = createServer(app);
+
+
 const io = new Server(server, {
     cors: {
         origin: ["http://localhost:5173", "http://localhost:4173", "http://localhost:3000"],
@@ -21,6 +26,19 @@ const io = new Server(server, {
         credentials: true
     }
 });
+
+
+function onlyForHandshake(middleware) {
+    return (req, res, next) => {
+        const isHandshake = req._query.sid === undefined;
+        if (isHandshake) {
+            middleware(req, res, next);
+        } else {
+            next();
+        }
+    };
+}
+
 db.exec('CREATE TABLE IF NOT EXISTS users(' +
     'id INTEGER PRIMARY KEY AUTOINCREMENT,' +
     'user TEXT,' +
@@ -61,6 +79,7 @@ db.exec(`
   )
 `);
 
+
 // Prepared statement to fetch history
 const getMessagesByChat = db.prepare(`
     SELECT 
@@ -86,9 +105,10 @@ const checkMembership = db.prepare(`
 `);
 const queryUser = db.prepare("SELECT id, user, password, cookie FROM users WHERE user = ?")
 const userStatus = db.prepare('SELECT 1 FROM users WHERE user = ?');
-const newUser = db.prepare(`INSERT INTO users (user, password, cookie) VALUES (?,?,?)`);
+const newUser = db.prepare(`INSERT INTO users (user, password, cookie) VALUES (?,?,?) RETURNING user, id, password, cookie`);
 const userIntoChat = db.prepare(`INSERT INTO chat_users (userID, chatID) VALUES (?,?)`)
 const queryCookie = db.prepare("SELECT user, id FROM users WHERE cookie = ?")
+const queryID = db.prepare("SELECT user, id, password, cookie FROM users WHERE id = ?")
 
 const chatList = db.prepare(`SELECT chats.id, chats.name 
     FROM chats JOIN chat_users ON chats.id = chat_users.chatID
@@ -107,6 +127,35 @@ if (!userExists("guest")) {
 }
 
 
+function ensureAuth(req, res, next) {
+    // Passport automatically adds this method to the request object
+    if (req.isAuthenticated()) {
+        console.log("authenticated");
+        return next();
+    }
+    res.redirect("/login");
+}
+
+
+
+passport.use(new LocalStrategy(async (username, password, done) => {
+    const user = await queryUser.get(username);
+    if (!user) return done(null, false);
+    if (user.password !== password) return done(null, false);
+    return done(null, user);
+}));
+
+const sessionMiddleware = session({
+    secret: randomBytes(64).toString('hex'),
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false }
+})
+
+
+app.use(sessionMiddleware)
+
+
 app.use(cors({
     origin: ["http://localhost:5173", "http://localhost:4173"],
     methods: ['GET', 'POST'],
@@ -114,67 +163,63 @@ app.use(cors({
 }));
 app.use(express.json());                         // for Content-Type: application/json
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use((req, res, next)=>{
-    if(!req.cookies.security) res.cookie("security", "test");
-    if(!queryCookie.get(req.cookies.security)) res.cookie("security", "test")
-    next();
-})
-app.use("/assets", express.static(isProd ? "./client/dist/assets" : "../client/dist/assets"));
-
-app.post("/login", (req,res) => {
-    switch (req.body.action) {
-        case "login":
-            if (!userExists(req.body.user)) break;
-            if (queryUser.get(req.body.user).password === req.body.password) {
-                res.cookie("security", queryUser.get(req.body.user).cookie, {httpOnly: true, maxAge: 86400000});
-                console.log("user logged in");
-            }
-            break;
-        case "register":
-            if (userExists(req.body.user)) break;
-            const cookieGen = randomBytes(10).toString('hex');
-            const theUser = newUser.run(req.body.user, req.body.password, cookieGen);
-            res.cookie("security", cookieGen, {httpOnly: true, maxAge: 86400000});
-            console.log("user registered")
-            userIntoChat.run(theUser.lastInsertRowid, 1);
-            break;
+app.use(passport.authenticate("session"));
 
 
+passport.serializeUser((user, cb) => {
+    console.log(`serializeUser ${user.id}`);
+    cb(null, user.id);
+});
 
-    }
-    return res.json({ success: true });
-
+passport.deserializeUser((user, cb) => {
+    console.log(`deserializeUser ${user}`);
+    cb(null, queryID.get(user));
 });
 
 
-app.post("/create", (req, res) => {
+
+
+app.use("/assets", express.static(isProd ? "./client/dist/assets" : "../client/dist/assets"));
+
+app.post("/login", passport.authenticate('local', {failureRedirect:"/login", successRedirect:"/"}));
+app.post("/register", (req, res, next) => {
+    if (userExists(req.body.username)) return res.redirect("/login");
+    const cookieGen = randomBytes(10).toString('hex');
+    const theUser = newUser.get(req.body.username, req.body.password, cookieGen);
+    console.log("user registered")
+    userIntoChat.run(theUser.id, 1);
+    req.login(theUser, (err) => {if (err) next(err);
+        res.redirect("/login");
+    })
+});
+
+app.post("/create", ensureAuth, (req, res) => {
     const { name } = req.body;
-    const userID = queryCookie.get(req.cookies.security).id
+    const userID = req.user.id
     const chatID = newChat.get(userID, name).id
     userIntoChat.get(userID, chatID)
     res.json({ chatID });
 });
 
 
-io.use((socket, next) => {
-    const header = socket.handshake.headers.cookie;
-    if (!header) return next(new Error("Authentication error: No cookies found"));
 
-    socket.cookies = cookie.parse(header);
-    next();
-});
-
+io.engine.use(onlyForHandshake(sessionMiddleware));
+io.engine.use(onlyForHandshake(passport.authenticate("session")));
+io.engine.use(
+    onlyForHandshake((req, res, next) => {
+        if (req.user) {
+            next();
+        } else {
+            res.writeHead(401);
+            res.end();
+        }
+    }),
+);
 
 io.on("connect", (socket, req) =>
 {
-    const securityCookie = socket.cookies?.security;
-    if (!securityCookie) {
-        socket.disconnect(true); // or handle as unauthenticated
-        return;
-    }
     const aChatID = parseInt(socket.handshake.query.chatID) || 1
-    const user = queryCookie.get(socket.cookies.security);
+    const user = socket.request.user
     console.log("connected the webSocket");
     socket.emit("user", user.user);
     if (checkMembership.get(user.id, aChatID)) {
@@ -210,20 +255,15 @@ io.on("connect", (socket, req) =>
 
 })
 
-app.get("/serverList", async (req, res) => {
-    let userID = await queryCookie.get(req.cookies.security).id;
+app.get("/serverList", ensureAuth, async (req, res) => {
+    let userID = await req.user.id;
     let serverList = await chatList.all(userID)
     let formattedServerList = await serverList.map(val => {return {"route":"/chat/"+val.id.toString(), "name":val.name}})
     res.json(formattedServerList);
 })
 
 app.get(/.*/, (req, res) => {
-    if (!req.cookies.security) {
-        res.cookie("security", "test", {httpOnly: true});
-    }
     res.sendFile(join(__dirname, isProd ? "./client/dist/" : "../client/dist", "index.html"))
-
-
 })
 
 server.listen(port, ()=> {console.log(`server at http://localhost:${port}`)});
